@@ -15,22 +15,22 @@ class SnackbarService {
     );
   }
 
-  static void showSuccess(String message) {
+  static void showInfo(String message) {
     scaffoldMessengerKey.currentState?.showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: Colors.green.shade700,
+        backgroundColor: Colors.blue.shade700,
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 3),
       ),
     );
   }
 
-  static void showInfo(String message) {
+  static void showSuccess(String message) {
     scaffoldMessengerKey.currentState?.showSnackBar(
       SnackBar(
         content: Text(message),
-        backgroundColor: Colors.blue.shade700,
+        backgroundColor: Colors.green.shade700,
         behavior: SnackBarBehavior.floating,
         duration: const Duration(seconds: 3),
       ),

@@ -42,10 +42,12 @@ dependencies:
   file_picker: ^10.3.9
   intl: ^0.20.2
   equatable: ^2.0.5
+  fake_cloud_firestore: ^4.0.1
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  mocktail: ^1.0.4
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
