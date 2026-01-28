@@ -33,8 +33,11 @@ void main() {
 
     if (includeHeader) {
       for (int i = 0; i < headerRow.length; i++) {
-        sheet.cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0)).value =
-            TextCellValue(headerRow[i]);
+        sheet
+            .cell(CellIndex.indexByColumnRow(columnIndex: i, rowIndex: 0))
+            .value = TextCellValue(
+          headerRow[i],
+        );
       }
     }
 
@@ -47,8 +50,12 @@ void main() {
           if (value != null) {
             if (value is DateTime) {
               sheet
-                  .cell(CellIndex.indexByColumnRow(
-                      columnIndex: colIndex, rowIndex: startRow + rowIndex))
+                  .cell(
+                    CellIndex.indexByColumnRow(
+                      columnIndex: colIndex,
+                      rowIndex: startRow + rowIndex,
+                    ),
+                  )
                   .value = DateCellValue(
                 year: value.year,
                 month: value.month,
@@ -56,9 +63,15 @@ void main() {
               );
             } else {
               sheet
-                  .cell(CellIndex.indexByColumnRow(
-                      columnIndex: colIndex, rowIndex: startRow + rowIndex))
-                  .value = TextCellValue(value.toString());
+                  .cell(
+                    CellIndex.indexByColumnRow(
+                      columnIndex: colIndex,
+                      rowIndex: startRow + rowIndex,
+                    ),
+                  )
+                  .value = TextCellValue(
+                value.toString(),
+              );
             }
           }
         }
@@ -84,18 +97,20 @@ void main() {
           {'name': 'John Doe', 'image': 'https://example.com/john.jpg'},
         ]);
 
-        final bytes = createExcelBytes(rows: [
-          [
-            '2024-01-15',
-            'Test Talk',
-            'Test Description',
-            speakersJson,
-            'https://example.com/live',
-            '30 min',
-            'Track A',
-            'Room 101',
+        final bytes = createExcelBytes(
+          rows: [
+            [
+              '2024-01-15',
+              'Test Talk',
+              'Test Description',
+              speakersJson,
+              'https://example.com/live',
+              '30 min',
+              '1',
+              'Room 101',
+            ],
           ],
-        ]);
+        );
 
         final result = parserService.parseExcel(bytes);
 
@@ -110,16 +125,45 @@ void main() {
         expect(result.talks.first.speakers.first.name, 'John Doe');
         expect(result.talks.first.liveLink, 'https://example.com/live');
         expect(result.talks.first.duration, '30 min');
-        expect(result.talks.first.track, 'Track A');
+        expect(result.talks.first.track, 1);
         expect(result.talks.first.venue, 'Room 101');
       });
 
       test('should parse multiple rows', () {
-        final bytes = createExcelBytes(rows: [
-          ['2024-01-15', 'Talk 1', 'Desc 1', '[]', '', '30 min', 'Track A', 'Room 1'],
-          ['2024-01-16', 'Talk 2', 'Desc 2', '[]', '', '45 min', 'Track B', 'Room 2'],
-          ['2024-01-17', 'Talk 3', 'Desc 3', '[]', '', '60 min', 'Track C', 'Room 3'],
-        ]);
+        final bytes = createExcelBytes(
+          rows: [
+            [
+              '2024-01-15',
+              'Talk 1',
+              'Desc 1',
+              '[]',
+              '',
+              '30 min',
+              'Track A',
+              'Room 1',
+            ],
+            [
+              '2024-01-16',
+              'Talk 2',
+              'Desc 2',
+              '[]',
+              '',
+              '45 min',
+              'Track B',
+              'Room 2',
+            ],
+            [
+              '2024-01-17',
+              'Talk 3',
+              'Desc 3',
+              '[]',
+              '',
+              '60 min',
+              'Track C',
+              'Room 3',
+            ],
+          ],
+        );
 
         final result = parserService.parseExcel(bytes);
 
@@ -130,58 +174,182 @@ void main() {
         expect(result.talks[2].title, 'Talk 3');
       });
 
-      test('should parse date in yyyy-MM-dd format', () {
-        final bytes = createExcelBytes(rows: [
-          ['2024-01-15', 'Talk', 'Desc', '[]', '', '', '', ''],
-        ]);
+      test('should parse date in yyyy-MM-dd format with default time 09:00', () {
+        final bytes = createExcelBytes(
+          rows: [
+            ['2024-01-15', 'Talk', 'Desc', '[]', '', '', '', ''],
+          ],
+        );
 
         final result = parserService.parseExcel(bytes);
 
         expect(result.talks.first.date.year, 2024);
         expect(result.talks.first.date.month, 1);
         expect(result.talks.first.date.day, 15);
+        expect(result.talks.first.date.hour, 9);
+        expect(result.talks.first.date.minute, 0);
       });
 
-      test('should parse date in MM/dd/yyyy format', () {
-        final bytes = createExcelBytes(rows: [
-          ['01/15/2024', 'Talk', 'Desc', '[]', '', '', '', ''],
-        ]);
+      test('should parse date in MM/dd/yyyy format with default time 09:00', () {
+        final bytes = createExcelBytes(
+          rows: [
+            ['01/15/2024', 'Talk', 'Desc', '[]', '', '', '', ''],
+          ],
+        );
 
         final result = parserService.parseExcel(bytes);
 
         expect(result.talks.first.date.year, 2024);
         expect(result.talks.first.date.month, 1);
         expect(result.talks.first.date.day, 15);
+        expect(result.talks.first.date.hour, 9);
+        expect(result.talks.first.date.minute, 0);
       });
 
-      test('should parse date in MM-dd-yyyy format', () {
-        final bytes = createExcelBytes(rows: [
-          ['01-15-2024', 'Talk', 'Desc', '[]', '', '', '', ''],
-        ]);
+      test('should parse date in MM-dd-yyyy format with default time 09:00', () {
+        final bytes = createExcelBytes(
+          rows: [
+            ['01-15-2024', 'Talk', 'Desc', '[]', '', '', '', ''],
+          ],
+        );
 
         final result = parserService.parseExcel(bytes);
 
         expect(result.talks.first.date.year, 2024);
         expect(result.talks.first.date.month, 1);
         expect(result.talks.first.date.day, 15);
+        expect(result.talks.first.date.hour, 9);
+        expect(result.talks.first.date.minute, 0);
       });
 
-      test('should parse DateCellValue from Excel', () {
-        final bytes = createExcelBytes(rows: [
-          [DateTime(2024, 1, 15), 'Talk', 'Desc', '[]', '', '', '', ''],
-        ]);
+      test('should parse DateCellValue from Excel with default time 09:00', () {
+        final bytes = createExcelBytes(
+          rows: [
+            [DateTime(2024, 1, 15), 'Talk', 'Desc', '[]', '', '', '', ''],
+          ],
+        );
 
         final result = parserService.parseExcel(bytes);
 
         expect(result.talks.first.date.year, 2024);
         expect(result.talks.first.date.month, 1);
         expect(result.talks.first.date.day, 15);
+        expect(result.talks.first.date.hour, 9);
+        expect(result.talks.first.date.minute, 0);
+      });
+
+      test('should parse datetime in yyyy-MM-dd HH:mm format', () {
+        final bytes = createExcelBytes(
+          rows: [
+            ['2024-01-15 17:30', 'Talk', 'Desc', '[]', '', '', '', ''],
+          ],
+        );
+
+        final result = parserService.parseExcel(bytes);
+
+        expect(result.talks.first.date.year, 2024);
+        expect(result.talks.first.date.month, 1);
+        expect(result.talks.first.date.day, 15);
+        expect(result.talks.first.date.hour, 17);
+        expect(result.talks.first.date.minute, 30);
+      });
+
+      test('should parse datetime in MM/dd/yyyy HH:mm format', () {
+        final bytes = createExcelBytes(
+          rows: [
+            ['01/15/2024 14:00', 'Talk', 'Desc', '[]', '', '', '', ''],
+          ],
+        );
+
+        final result = parserService.parseExcel(bytes);
+
+        expect(result.talks.first.date.year, 2024);
+        expect(result.talks.first.date.month, 1);
+        expect(result.talks.first.date.day, 15);
+        expect(result.talks.first.date.hour, 14);
+        expect(result.talks.first.date.minute, 0);
+      });
+
+      test('should parse datetime in yyyy-MM-dd h:mm AM format', () {
+        final bytes = createExcelBytes(
+          rows: [
+            ['2024-01-15 9:30 AM', 'Talk', 'Desc', '[]', '', '', '', ''],
+          ],
+        );
+
+        final result = parserService.parseExcel(bytes);
+
+        expect(result.talks.first.date.year, 2024);
+        expect(result.talks.first.date.month, 1);
+        expect(result.talks.first.date.day, 15);
+        expect(result.talks.first.date.hour, 9);
+        expect(result.talks.first.date.minute, 30);
+      });
+
+      test('should parse datetime in yyyy-MM-dd h:mm PM format', () {
+        final bytes = createExcelBytes(
+          rows: [
+            ['2024-01-15 5:30 PM', 'Talk', 'Desc', '[]', '', '', '', ''],
+          ],
+        );
+
+        final result = parserService.parseExcel(bytes);
+
+        expect(result.talks.first.date.year, 2024);
+        expect(result.talks.first.date.month, 1);
+        expect(result.talks.first.date.day, 15);
+        expect(result.talks.first.date.hour, 17);
+        expect(result.talks.first.date.minute, 30);
+      });
+
+      test('should parse datetime 12:00 PM as noon', () {
+        final bytes = createExcelBytes(
+          rows: [
+            ['2024-01-15 12:00 PM', 'Talk', 'Desc', '[]', '', '', '', ''],
+          ],
+        );
+
+        final result = parserService.parseExcel(bytes);
+
+        expect(result.talks.first.date.hour, 12);
+        expect(result.talks.first.date.minute, 0);
+      });
+
+      test('should parse datetime 12:00 AM as midnight', () {
+        final bytes = createExcelBytes(
+          rows: [
+            ['2024-01-15 12:00 AM', 'Talk', 'Desc', '[]', '', '', '', ''],
+          ],
+        );
+
+        final result = parserService.parseExcel(bytes);
+
+        expect(result.talks.first.date.hour, 0);
+        expect(result.talks.first.date.minute, 0);
+      });
+
+      test('should parse ISO 8601 datetime format', () {
+        final bytes = createExcelBytes(
+          rows: [
+            ['2024-01-15T17:30:00', 'Talk', 'Desc', '[]', '', '', '', ''],
+          ],
+        );
+
+        final result = parserService.parseExcel(bytes);
+
+        expect(result.talks.first.date.year, 2024);
+        expect(result.talks.first.date.month, 1);
+        expect(result.talks.first.date.day, 15);
+        expect(result.talks.first.date.hour, 17);
+        expect(result.talks.first.date.minute, 30);
       });
 
       test('should add error when title is missing', () {
-        final bytes = createExcelBytes(rows: [
-          ['2024-01-15', '', 'Desc', '[]', '', '', '', ''],
-        ]);
+        final bytes = createExcelBytes(
+          rows: [
+            ['2024-01-15', '', 'Desc', '[]', '', '', '', ''],
+          ],
+        );
 
         final result = parserService.parseExcel(bytes);
 
@@ -192,9 +360,11 @@ void main() {
       });
 
       test('should add error when date is missing', () {
-        final bytes = createExcelBytes(rows: [
-          ['', 'Talk Title', 'Desc', '[]', '', '', '', ''],
-        ]);
+        final bytes = createExcelBytes(
+          rows: [
+            ['', 'Talk Title', 'Desc', '[]', '', '', '', ''],
+          ],
+        );
 
         final result = parserService.parseExcel(bytes);
 
@@ -205,9 +375,11 @@ void main() {
       });
 
       test('should add error when date is invalid', () {
-        final bytes = createExcelBytes(rows: [
-          ['invalid-date', 'Talk Title', 'Desc', '[]', '', '', '', ''],
-        ]);
+        final bytes = createExcelBytes(
+          rows: [
+            ['invalid-date', 'Talk Title', 'Desc', '[]', '', '', '', ''],
+          ],
+        );
 
         final result = parserService.parseExcel(bytes);
 
@@ -217,11 +389,13 @@ void main() {
       });
 
       test('should skip empty rows', () {
-        final bytes = createExcelBytes(rows: [
-          ['2024-01-15', 'Talk 1', 'Desc 1', '[]', '', '', '', ''],
-          [null, null, null, null, null, null, null, null],
-          ['2024-01-16', 'Talk 2', 'Desc 2', '[]', '', '', '', ''],
-        ]);
+        final bytes = createExcelBytes(
+          rows: [
+            ['2024-01-15', 'Talk 1', 'Desc 1', '[]', '', '', '', ''],
+            [null, null, null, null, null, null, null, null],
+            ['2024-01-16', 'Talk 2', 'Desc 2', '[]', '', '', '', ''],
+          ],
+        );
 
         final result = parserService.parseExcel(bytes);
 
@@ -235,9 +409,11 @@ void main() {
           {'name': 'Speaker 2', 'image': 'https://example.com/2.jpg'},
         ]);
 
-        final bytes = createExcelBytes(rows: [
-          ['2024-01-15', 'Talk', 'Desc', speakersJson, '', '', '', ''],
-        ]);
+        final bytes = createExcelBytes(
+          rows: [
+            ['2024-01-15', 'Talk', 'Desc', speakersJson, '', '', '', ''],
+          ],
+        );
 
         final result = parserService.parseExcel(bytes);
 
@@ -247,9 +423,11 @@ void main() {
       });
 
       test('should return empty speakers list for invalid JSON', () {
-        final bytes = createExcelBytes(rows: [
-          ['2024-01-15', 'Talk', 'Desc', 'invalid json', '', '', '', ''],
-        ]);
+        final bytes = createExcelBytes(
+          rows: [
+            ['2024-01-15', 'Talk', 'Desc', 'invalid json', '', '', '', ''],
+          ],
+        );
 
         final result = parserService.parseExcel(bytes);
 
@@ -257,9 +435,11 @@ void main() {
       });
 
       test('should return empty speakers list for empty string', () {
-        final bytes = createExcelBytes(rows: [
-          ['2024-01-15', 'Talk', 'Desc', '', '', '', '', ''],
-        ]);
+        final bytes = createExcelBytes(
+          rows: [
+            ['2024-01-15', 'Talk', 'Desc', '', '', '', '', ''],
+          ],
+        );
 
         final result = parserService.parseExcel(bytes);
 
@@ -272,9 +452,11 @@ void main() {
           {'name': '', 'image': 'https://example.com/empty.jpg'},
         ]);
 
-        final bytes = createExcelBytes(rows: [
-          ['2024-01-15', 'Talk', 'Desc', speakersJson, '', '', '', ''],
-        ]);
+        final bytes = createExcelBytes(
+          rows: [
+            ['2024-01-15', 'Talk', 'Desc', speakersJson, '', '', '', ''],
+          ],
+        );
 
         final result = parserService.parseExcel(bytes);
 
@@ -297,18 +479,22 @@ void main() {
 
         expect(
           () => parserService.parseExcel(bytes),
-          throwsA(isA<ParseException>().having(
-            (e) => e.message,
-            'message',
-            'Excel file must have a header row and at least one data row',
-          )),
+          throwsA(
+            isA<ParseException>().having(
+              (e) => e.message,
+              'message',
+              'Excel file must have a header row and at least one data row',
+            ),
+          ),
         );
       });
 
       test('should handle missing optional columns gracefully', () {
-        final bytes = createExcelBytes(rows: [
-          ['2024-01-15', 'Talk', '', '', '', '', '', ''],
-        ]);
+        final bytes = createExcelBytes(
+          rows: [
+            ['2024-01-15', 'Talk', '', '', '', '', '', ''],
+          ],
+        );
 
         final result = parserService.parseExcel(bytes);
 
@@ -318,17 +504,19 @@ void main() {
         expect(result.talks.first.speakers, isEmpty);
         expect(result.talks.first.liveLink, '');
         expect(result.talks.first.duration, '');
-        expect(result.talks.first.track, '');
+        expect(result.talks.first.track, 0);
         expect(result.talks.first.venue, '');
       });
 
       test('should collect errors for multiple invalid rows', () {
-        final bytes = createExcelBytes(rows: [
-          ['', 'Talk 1', 'Desc', '[]', '', '', '', ''], // Missing date
-          ['2024-01-15', '', 'Desc', '[]', '', '', '', ''], // Missing title
-          ['2024-01-16', 'Valid Talk', 'Desc', '[]', '', '', '', ''], // Valid
-          ['invalid', 'Talk 3', 'Desc', '[]', '', '', '', ''], // Invalid date
-        ]);
+        final bytes = createExcelBytes(
+          rows: [
+            ['', 'Talk 1', 'Desc', '[]', '', '', '', ''], // Missing date
+            ['2024-01-15', '', 'Desc', '[]', '', '', '', ''], // Missing title
+            ['2024-01-16', 'Valid Talk', 'Desc', '[]', '', '', '', ''], // Valid
+            ['invalid', 'Talk 3', 'Desc', '[]', '', '', '', ''], // Invalid date
+          ],
+        );
 
         final result = parserService.parseExcel(bytes);
 

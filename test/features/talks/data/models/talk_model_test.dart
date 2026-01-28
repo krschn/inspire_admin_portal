@@ -2,8 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:inspire_admin_portal/features/talks/data/models/talk_model.dart';
-import 'package:inspire_admin_portal/features/talks/domain/entities/talk.dart';
 import 'package:inspire_admin_portal/features/talks/domain/entities/speaker.dart';
+import 'package:inspire_admin_portal/features/talks/domain/entities/talk.dart';
 
 void main() {
   group('TalkModel', () {
@@ -22,43 +22,54 @@ void main() {
       List<Map<String, dynamic>>? speakers,
       String? liveLink,
       String? duration,
-      String? track,
+      int? track,
       String? venue,
     }) {
       return {
         'date': date ?? testTimestamp,
         'title': title ?? 'Test Talk',
         'description': description ?? 'Test Description',
-        'speakers': speakers ?? [
-          {'name': 'John Doe', 'image': 'https://example.com/john.jpg'},
-        ],
+        'speakers':
+            speakers ??
+            [
+              {'name': 'John Doe', 'image': 'https://example.com/john.jpg'},
+            ],
         'live_link': liveLink ?? 'https://example.com/live',
         'duration': duration ?? '30 min',
-        'track': track ?? 'Track A',
+        'track': track ?? 1,
         'venue': venue ?? 'Room 101',
       };
     }
 
     group('fromFirestore', () {
-      test('should create TalkModel from complete Firestore document', () async {
-        await fakeFirestore.collection('talks').doc('talk-1').set(createFirestoreData());
+      test(
+        'should create TalkModel from complete Firestore document',
+        () async {
+          await fakeFirestore
+              .collection('talks')
+              .doc('talk-1')
+              .set(createFirestoreData());
 
-        final doc = await fakeFirestore.collection('talks').doc('talk-1').get();
-        final model = TalkModel.fromFirestore(doc);
+          final doc = await fakeFirestore
+              .collection('talks')
+              .doc('talk-1')
+              .get();
+          final model = TalkModel.fromFirestore(doc);
 
-        expect(model.id, 'talk-1');
-        expect(model.date.year, 2024);
-        expect(model.date.month, 1);
-        expect(model.date.day, 15);
-        expect(model.title, 'Test Talk');
-        expect(model.description, 'Test Description');
-        expect(model.speakers.length, 1);
-        expect(model.speakers.first.name, 'John Doe');
-        expect(model.liveLink, 'https://example.com/live');
-        expect(model.duration, '30 min');
-        expect(model.track, 'Track A');
-        expect(model.venue, 'Room 101');
-      });
+          expect(model.id, 'talk-1');
+          expect(model.date.year, 2024);
+          expect(model.date.month, 1);
+          expect(model.date.day, 15);
+          expect(model.title, 'Test Talk');
+          expect(model.description, 'Test Description');
+          expect(model.speakers.length, 1);
+          expect(model.speakers.first.name, 'John Doe');
+          expect(model.liveLink, 'https://example.com/live');
+          expect(model.duration, '30 min');
+          expect(model.track, 1);
+          expect(model.venue, 'Room 101');
+        },
+      );
 
       test('should use DateTime.now() when date is null', () async {
         final data = createFirestoreData();
@@ -70,8 +81,14 @@ void main() {
         final model = TalkModel.fromFirestore(doc);
         final afterParse = DateTime.now();
 
-        expect(model.date.isAfter(beforeParse.subtract(const Duration(seconds: 1))), isTrue);
-        expect(model.date.isBefore(afterParse.add(const Duration(seconds: 1))), isTrue);
+        expect(
+          model.date.isAfter(beforeParse.subtract(const Duration(seconds: 1))),
+          isTrue,
+        );
+        expect(
+          model.date.isBefore(afterParse.add(const Duration(seconds: 1))),
+          isTrue,
+        );
       });
 
       test('should use empty string when title is null', () async {
@@ -163,11 +180,14 @@ void main() {
           title: 'Entity Talk',
           description: 'Entity Description',
           speakers: const [
-            Speaker(name: 'Entity Speaker', image: 'https://example.com/entity.jpg'),
+            Speaker(
+              name: 'Entity Speaker',
+              image: 'https://example.com/entity.jpg',
+            ),
           ],
           liveLink: 'https://entity.com/live',
           duration: '45 min',
-          track: 'Track B',
+          track: 1,
           venue: 'Room 202',
         );
 
@@ -181,7 +201,7 @@ void main() {
         expect(model.speakers.first.name, 'Entity Speaker');
         expect(model.liveLink, 'https://entity.com/live');
         expect(model.duration, '45 min');
-        expect(model.track, 'Track B');
+        expect(model.track, 1);
         expect(model.venue, 'Room 202');
       });
 
@@ -193,7 +213,7 @@ void main() {
           speakers: const [],
           liveLink: '',
           duration: '',
-          track: '',
+          track: 0,
           venue: '',
         );
 
@@ -211,26 +231,35 @@ void main() {
           title: 'Model Talk',
           description: 'Model Description',
           speakers: const [
-            Speaker(name: 'Model Speaker', image: 'https://example.com/model.jpg'),
+            Speaker(
+              name: 'Model Speaker',
+              image: 'https://example.com/model.jpg',
+            ),
           ],
           liveLink: 'https://model.com/live',
           duration: '60 min',
-          track: 'Track C',
+          track: 1,
           venue: 'Room 303',
         );
 
         final firestoreMap = model.toFirestore();
 
         expect(firestoreMap['date'], isA<Timestamp>());
-        expect((firestoreMap['date'] as Timestamp).toDate().year, testDate.year);
+        expect(
+          (firestoreMap['date'] as Timestamp).toDate().year,
+          testDate.year,
+        );
         expect(firestoreMap['title'], 'Model Talk');
         expect(firestoreMap['description'], 'Model Description');
         expect(firestoreMap['speakers'], isA<List>());
         expect((firestoreMap['speakers'] as List).length, 1);
-        expect((firestoreMap['speakers'] as List).first['name'], 'Model Speaker');
+        expect(
+          (firestoreMap['speakers'] as List).first['name'],
+          'Model Speaker',
+        );
         expect(firestoreMap['live_link'], 'https://model.com/live');
         expect(firestoreMap['duration'], '60 min');
-        expect(firestoreMap['track'], 'Track C');
+        expect(firestoreMap['track'], 1);
         expect(firestoreMap['venue'], 'Room 303');
       });
 
@@ -243,7 +272,7 @@ void main() {
           speakers: const [],
           liveLink: '',
           duration: '',
-          track: '',
+          track: 1,
           venue: '',
         );
 
@@ -261,11 +290,14 @@ void main() {
           title: 'Model Talk',
           description: 'Model Description',
           speakers: const [
-            Speaker(name: 'Model Speaker', image: 'https://example.com/model.jpg'),
+            Speaker(
+              name: 'Model Speaker',
+              image: 'https://example.com/model.jpg',
+            ),
           ],
           liveLink: 'https://model.com/live',
           duration: '60 min',
-          track: 'Track C',
+          track: 1,
           venue: 'Room 303',
         );
 
@@ -279,56 +311,65 @@ void main() {
         expect(entity.speakers.length, 1);
         expect(entity.liveLink, 'https://model.com/live');
         expect(entity.duration, '60 min');
-        expect(entity.track, 'Track C');
+        expect(entity.track, 1);
         expect(entity.venue, 'Room 303');
       });
     });
 
     group('round-trip conversion', () {
-      test('should preserve data through entity -> model -> firestore -> model -> entity', () async {
-        final originalEntity = Talk(
-          id: 'round-trip-id',
-          date: testDate,
-          title: 'Round Trip Talk',
-          description: 'Round Trip Description',
-          speakers: const [
-            Speaker(name: 'RT Speaker', image: 'https://example.com/rt.jpg'),
-          ],
-          liveLink: 'https://roundtrip.com/live',
-          duration: '90 min',
-          track: 'Track RT',
-          venue: 'Room RT',
-        );
+      test(
+        'should preserve data through entity -> model -> firestore -> model -> entity',
+        () async {
+          final originalEntity = Talk(
+            id: 'round-trip-id',
+            date: testDate,
+            title: 'Round Trip Talk',
+            description: 'Round Trip Description',
+            speakers: const [
+              Speaker(name: 'RT Speaker', image: 'https://example.com/rt.jpg'),
+            ],
+            liveLink: 'https://roundtrip.com/live',
+            duration: '90 min',
+            track: 1,
+            venue: 'Room RT',
+          );
 
-        // Entity -> Model
-        final model1 = TalkModel.fromEntity(originalEntity);
+          // Entity -> Model
+          final model1 = TalkModel.fromEntity(originalEntity);
 
-        // Model -> Firestore
-        await fakeFirestore
-            .collection('talks')
-            .doc('round-trip-id')
-            .set(model1.toFirestore());
+          // Model -> Firestore
+          await fakeFirestore
+              .collection('talks')
+              .doc('round-trip-id')
+              .set(model1.toFirestore());
 
-        // Firestore -> Model
-        final doc = await fakeFirestore.collection('talks').doc('round-trip-id').get();
-        final model2 = TalkModel.fromFirestore(doc);
+          // Firestore -> Model
+          final doc = await fakeFirestore
+              .collection('talks')
+              .doc('round-trip-id')
+              .get();
+          final model2 = TalkModel.fromFirestore(doc);
 
-        // Model -> Entity
-        final finalEntity = model2.toEntity();
+          // Model -> Entity
+          final finalEntity = model2.toEntity();
 
-        expect(finalEntity.id, originalEntity.id);
-        expect(finalEntity.date.year, originalEntity.date.year);
-        expect(finalEntity.date.month, originalEntity.date.month);
-        expect(finalEntity.date.day, originalEntity.date.day);
-        expect(finalEntity.title, originalEntity.title);
-        expect(finalEntity.description, originalEntity.description);
-        expect(finalEntity.speakers.length, originalEntity.speakers.length);
-        expect(finalEntity.speakers.first.name, originalEntity.speakers.first.name);
-        expect(finalEntity.liveLink, originalEntity.liveLink);
-        expect(finalEntity.duration, originalEntity.duration);
-        expect(finalEntity.track, originalEntity.track);
-        expect(finalEntity.venue, originalEntity.venue);
-      });
+          expect(finalEntity.id, originalEntity.id);
+          expect(finalEntity.date.year, originalEntity.date.year);
+          expect(finalEntity.date.month, originalEntity.date.month);
+          expect(finalEntity.date.day, originalEntity.date.day);
+          expect(finalEntity.title, originalEntity.title);
+          expect(finalEntity.description, originalEntity.description);
+          expect(finalEntity.speakers.length, originalEntity.speakers.length);
+          expect(
+            finalEntity.speakers.first.name,
+            originalEntity.speakers.first.name,
+          );
+          expect(finalEntity.liveLink, originalEntity.liveLink);
+          expect(finalEntity.duration, originalEntity.duration);
+          expect(finalEntity.track, originalEntity.track);
+          expect(finalEntity.venue, originalEntity.venue);
+        },
+      );
     });
   });
 }

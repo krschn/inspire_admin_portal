@@ -1,7 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-import '../../domain/entities/talk.dart';
 import '../../domain/entities/speaker.dart';
+import '../../domain/entities/talk.dart';
 import 'speaker_model.dart';
 
 class TalkModel extends Talk {
@@ -17,21 +17,6 @@ class TalkModel extends Talk {
     required super.venue,
   });
 
-  factory TalkModel.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
-    return TalkModel(
-      id: doc.id,
-      date: (data['date'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      title: data['title'] as String? ?? '',
-      description: data['description'] as String? ?? '',
-      speakers: _parseSpeakers(data['speakers']),
-      liveLink: data['live_link'] as String? ?? '',
-      duration: data['duration'] as String? ?? '',
-      track: data['track'] as String? ?? '',
-      venue: data['venue'] as String? ?? '',
-    );
-  }
-
   factory TalkModel.fromEntity(Talk talk) {
     return TalkModel(
       id: talk.id,
@@ -46,14 +31,33 @@ class TalkModel extends Talk {
     );
   }
 
-  static List<Speaker> _parseSpeakers(dynamic speakersData) {
-    if (speakersData == null) return [];
-    if (speakersData is! List) return [];
+  factory TalkModel.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return TalkModel(
+      id: doc.id,
+      date: (data['date'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      title: data['title'] as String? ?? '',
+      description: data['description'] as String? ?? '',
+      speakers: _parseSpeakers(data['speakers']),
+      liveLink: data['live_link'] as String? ?? '',
+      duration: data['duration'] as String? ?? '',
+      track: data['track'] as int? ?? 0,
+      venue: data['venue'] as String? ?? '',
+    );
+  }
 
-    return speakersData
-        .whereType<Map<String, dynamic>>()
-        .map((map) => SpeakerModel.fromMap(map).toEntity())
-        .toList();
+  Talk toEntity() {
+    return Talk(
+      id: id,
+      date: date,
+      title: title,
+      description: description,
+      speakers: speakers,
+      liveLink: liveLink,
+      duration: duration,
+      track: track,
+      venue: venue,
+    );
   }
 
   Map<String, dynamic> toFirestore() {
@@ -71,17 +75,13 @@ class TalkModel extends Talk {
     };
   }
 
-  Talk toEntity() {
-    return Talk(
-      id: id,
-      date: date,
-      title: title,
-      description: description,
-      speakers: speakers,
-      liveLink: liveLink,
-      duration: duration,
-      track: track,
-      venue: venue,
-    );
+  static List<Speaker> _parseSpeakers(dynamic speakersData) {
+    if (speakersData == null) return [];
+    if (speakersData is! List) return [];
+
+    return speakersData
+        .whereType<Map<String, dynamic>>()
+        .map((map) => SpeakerModel.fromMap(map).toEntity())
+        .toList();
   }
 }

@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 
 import '../../../../core/constants/firestore_paths.dart';
 import '../../../../core/errors/exceptions.dart';
@@ -56,9 +57,19 @@ class TalkRemoteDataSourceImpl implements TalkRemoteDataSource {
   @override
   Future<TalkModel> createTalk(String eventId, TalkModel talk) async {
     try {
-      final docRef = await firestore
-          .collection(FirestorePaths.talks(eventId))
-          .add(talk.toFirestore());
+      // Generate Firestore auto-ID for uniqueness suffix
+      final autoId =
+          firestore.collection(FirestorePaths.talks(eventId)).doc().id;
+
+      // Create custom ID: YYYYMMDD_HHMM_track_autoId
+      final dateStr = DateFormat('yyyyMMdd').format(talk.date);
+      final timeStr = DateFormat('HHmm').format(talk.date);
+      final customId = '${dateStr}_${timeStr}_${talk.track}_$autoId';
+
+      // Use .set() instead of .add() to use our custom ID
+      final docRef =
+          firestore.collection(FirestorePaths.talks(eventId)).doc(customId);
+      await docRef.set(talk.toFirestore());
 
       final doc = await docRef.get();
       return TalkModel.fromFirestore(doc);

@@ -9,11 +9,7 @@ class TalkFormDialog extends StatefulWidget {
   final Talk? talk;
   final Future<bool> Function(Talk) onSubmit;
 
-  const TalkFormDialog({
-    super.key,
-    this.talk,
-    required this.onSubmit,
-  });
+  const TalkFormDialog({super.key, this.talk, required this.onSubmit});
 
   @override
   State<TalkFormDialog> createState() => _TalkFormDialogState();
@@ -29,83 +25,17 @@ class _TalkFormDialogState extends State<TalkFormDialog> {
   late final TextEditingController _venueController;
 
   late DateTime _selectedDate;
+  late TimeOfDay _selectedTime;
   late List<Speaker> _speakers;
   bool _isSubmitting = false;
 
   bool get _isEditing => widget.talk != null;
 
-  @override
-  void initState() {
-    super.initState();
-    final talk = widget.talk;
-
-    _titleController = TextEditingController(text: talk?.title ?? '');
-    _descriptionController =
-        TextEditingController(text: talk?.description ?? '');
-    _liveLinkController = TextEditingController(text: talk?.liveLink ?? '');
-    _durationController = TextEditingController(text: talk?.duration ?? '');
-    _trackController = TextEditingController(text: talk?.track ?? '');
-    _venueController = TextEditingController(text: talk?.venue ?? '');
-
-    _selectedDate = talk?.date ?? DateTime.now();
-    _speakers = talk?.speakers ?? [];
-  }
-
-  @override
-  void dispose() {
-    _titleController.dispose();
-    _descriptionController.dispose();
-    _liveLinkController.dispose();
-    _durationController.dispose();
-    _trackController.dispose();
-    _venueController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _selectDate() async {
-    final picked = await showDatePicker(
-      context: context,
-      initialDate: _selectedDate,
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2030),
-    );
-    if (picked != null) {
-      setState(() {
-        _selectedDate = picked;
-      });
-    }
-  }
-
-  Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    setState(() {
-      _isSubmitting = true;
-    });
-
-    final talk = Talk(
-      id: widget.talk?.id,
-      date: _selectedDate,
-      title: _titleController.text.trim(),
-      description: _descriptionController.text.trim(),
-      speakers: _speakers,
-      liveLink: _liveLinkController.text.trim(),
-      duration: _durationController.text.trim(),
-      track: _trackController.text.trim(),
-      venue: _venueController.text.trim(),
-    );
-
-    final success = await widget.onSubmit(talk);
-
-    if (mounted) {
-      setState(() {
-        _isSubmitting = false;
-      });
-
-      if (success) {
-        Navigator.of(context).pop();
-      }
-    }
+  String _formatTime(TimeOfDay time) {
+    final hour = time.hourOfPeriod == 0 ? 12 : time.hourOfPeriod;
+    final minute = time.minute.toString().padLeft(2, '0');
+    final period = time.period == DayPeriod.am ? 'AM' : 'PM';
+    return '$hour:$minute $period';
   }
 
   @override
@@ -147,16 +77,38 @@ class _TalkFormDialogState extends State<TalkFormDialog> {
                           },
                         ),
                         const SizedBox(height: 16),
-                        InkWell(
-                          onTap: _selectDate,
-                          child: InputDecorator(
-                            decoration: const InputDecoration(
-                              labelText: 'Date *',
-                              border: OutlineInputBorder(),
-                              suffixIcon: Icon(Icons.calendar_today),
+                        Row(
+                          children: [
+                            Expanded(
+                              flex: 3,
+                              child: InkWell(
+                                onTap: _selectDate,
+                                child: InputDecorator(
+                                  decoration: const InputDecoration(
+                                    labelText: 'Date *',
+                                    border: OutlineInputBorder(),
+                                    suffixIcon: Icon(Icons.calendar_today),
+                                  ),
+                                  child: Text(dateFormat.format(_selectedDate)),
+                                ),
+                              ),
                             ),
-                            child: Text(dateFormat.format(_selectedDate)),
-                          ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              flex: 2,
+                              child: InkWell(
+                                onTap: _selectTime,
+                                child: InputDecorator(
+                                  decoration: const InputDecoration(
+                                    labelText: 'Time *',
+                                    border: OutlineInputBorder(),
+                                    suffixIcon: Icon(Icons.access_time),
+                                  ),
+                                  child: Text(_formatTime(_selectedTime)),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 16),
                         TextFormField(
@@ -250,5 +202,105 @@ class _TalkFormDialogState extends State<TalkFormDialog> {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _descriptionController.dispose();
+    _liveLinkController.dispose();
+    _durationController.dispose();
+    _trackController.dispose();
+    _venueController.dispose();
+    super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    final talk = widget.talk;
+
+    _titleController = TextEditingController(text: talk?.title ?? '');
+    _descriptionController = TextEditingController(
+      text: talk?.description ?? '',
+    );
+    _liveLinkController = TextEditingController(text: talk?.liveLink ?? '');
+    _durationController = TextEditingController(text: talk?.duration ?? '');
+    _trackController = TextEditingController(
+      text: talk?.track.toString() ?? '',
+    );
+    _venueController = TextEditingController(text: talk?.venue ?? '');
+
+    _selectedDate = talk?.date ?? DateTime.now();
+    _selectedTime = talk != null
+        ? TimeOfDay(hour: talk.date.hour, minute: talk.date.minute)
+        : TimeOfDay.now();
+    _speakers = talk?.speakers ?? [];
+  }
+
+  Future<void> _selectDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _selectedDate,
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2030),
+    );
+    if (picked != null) {
+      setState(() {
+        _selectedDate = picked;
+      });
+    }
+  }
+
+  Future<void> _selectTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _selectedTime,
+    );
+    if (picked != null) {
+      setState(() {
+        _selectedTime = picked;
+      });
+    }
+  }
+
+  Future<void> _submit() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() {
+      _isSubmitting = true;
+    });
+
+    final combinedDateTime = DateTime(
+      _selectedDate.year,
+      _selectedDate.month,
+      _selectedDate.day,
+      _selectedTime.hour,
+      _selectedTime.minute,
+    );
+
+    final talk = Talk(
+      id: widget.talk?.id,
+      date: combinedDateTime,
+      title: _titleController.text.trim(),
+      description: _descriptionController.text.trim(),
+      speakers: _speakers,
+      liveLink: _liveLinkController.text.trim(),
+      duration: _durationController.text.trim(),
+      track: int.tryParse(_trackController.text.trim()) ?? 0,
+      venue: _venueController.text.trim(),
+    );
+
+    final success = await widget.onSubmit(talk);
+
+    if (mounted) {
+      setState(() {
+        _isSubmitting = false;
+      });
+
+      if (success) {
+        Navigator.of(context).pop();
+      }
+    }
   }
 }

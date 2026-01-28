@@ -1,13 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fpdart/fpdart.dart';
-import 'package:mocktail/mocktail.dart';
 import 'package:inspire_admin_portal/core/errors/failures.dart';
-import 'package:inspire_admin_portal/features/talks/domain/entities/talk.dart';
 import 'package:inspire_admin_portal/features/talks/domain/entities/speaker.dart';
+import 'package:inspire_admin_portal/features/talks/domain/entities/talk.dart';
 import 'package:inspire_admin_portal/features/talks/domain/repositories/talk_repository.dart';
 import 'package:inspire_admin_portal/features/talks/domain/usecases/update_talk.dart';
-
-class MockTalkRepository extends Mock implements TalkRepository {}
+import 'package:mocktail/mocktail.dart';
 
 void main() {
   late UpdateTalk useCase;
@@ -19,16 +17,18 @@ void main() {
   });
 
   setUpAll(() {
-    registerFallbackValue(Talk(
-      date: DateTime.now(),
-      title: '',
-      description: '',
-      speakers: const [],
-      liveLink: '',
-      duration: '',
-      track: '',
-      venue: '',
-    ));
+    registerFallbackValue(
+      Talk(
+        date: DateTime.now(),
+        title: '',
+        description: '',
+        speakers: const [],
+        liveLink: '',
+        duration: '',
+        track: 1,
+        venue: '',
+      ),
+    );
   });
 
   final testTalk = Talk(
@@ -36,10 +36,15 @@ void main() {
     date: DateTime(2024, 1, 15),
     title: 'Updated Talk',
     description: 'Updated Description',
-    speakers: const [Speaker(name: 'Updated Speaker', image: 'https://example.com/updated.jpg')],
+    speakers: const [
+      Speaker(
+        name: 'Updated Speaker',
+        image: 'https://example.com/updated.jpg',
+      ),
+    ],
     liveLink: 'https://example.com/updated-live',
     duration: '45 min',
-    track: 'Track B',
+    track: 1,
     venue: 'Room 202',
   );
 
@@ -47,8 +52,9 @@ void main() {
     const eventId = 'event-123';
 
     test('should call repository.updateTalk with correct parameters', () async {
-      when(() => mockRepository.updateTalk(eventId, testTalk))
-          .thenAnswer((_) async => Right(testTalk));
+      when(
+        () => mockRepository.updateTalk(eventId, testTalk),
+      ).thenAnswer((_) async => Right(testTalk));
 
       await useCase(eventId, testTalk);
 
@@ -56,41 +62,38 @@ void main() {
     });
 
     test('should return updated talk on success', () async {
-      when(() => mockRepository.updateTalk(eventId, testTalk))
-          .thenAnswer((_) async => Right(testTalk));
+      when(
+        () => mockRepository.updateTalk(eventId, testTalk),
+      ).thenAnswer((_) async => Right(testTalk));
 
       final result = await useCase(eventId, testTalk);
 
       expect(result.isRight(), isTrue);
-      result.fold(
-        (failure) => fail('Expected Right but got Left'),
-        (talk) {
-          expect(talk.id, testTalk.id);
-          expect(talk.title, 'Updated Talk');
-          expect(talk.description, 'Updated Description');
-        },
-      );
+      result.fold((failure) => fail('Expected Right but got Left'), (talk) {
+        expect(talk.id, testTalk.id);
+        expect(talk.title, 'Updated Talk');
+        expect(talk.description, 'Updated Description');
+      });
     });
 
     test('should return ServerFailure on server error', () async {
-      when(() => mockRepository.updateTalk(eventId, testTalk))
-          .thenAnswer((_) async => const Left(ServerFailure('Failed to update')));
+      when(
+        () => mockRepository.updateTalk(eventId, testTalk),
+      ).thenAnswer((_) async => const Left(ServerFailure('Failed to update')));
 
       final result = await useCase(eventId, testTalk);
 
       expect(result.isLeft(), isTrue);
-      result.fold(
-        (failure) {
-          expect(failure, isA<ServerFailure>());
-          expect(failure.message, 'Failed to update');
-        },
-        (talk) => fail('Expected Left but got Right'),
-      );
+      result.fold((failure) {
+        expect(failure, isA<ServerFailure>());
+        expect(failure.message, 'Failed to update');
+      }, (talk) => fail('Expected Left but got Right'));
     });
 
     test('should return NetworkFailure on network error', () async {
-      when(() => mockRepository.updateTalk(eventId, testTalk))
-          .thenAnswer((_) async => const Left(NetworkFailure()));
+      when(
+        () => mockRepository.updateTalk(eventId, testTalk),
+      ).thenAnswer((_) async => const Left(NetworkFailure()));
 
       final result = await useCase(eventId, testTalk);
 
@@ -102,3 +105,5 @@ void main() {
     });
   });
 }
+
+class MockTalkRepository extends Mock implements TalkRepository {}

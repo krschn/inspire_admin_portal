@@ -10,7 +10,7 @@ class Talk extends Equatable {
   final List<Speaker> speakers;
   final String liveLink;
   final String duration;
-  final String track;
+  final int track;
   final String venue;
 
   const Talk({
@@ -25,6 +25,19 @@ class Talk extends Equatable {
     required this.venue,
   });
 
+  @override
+  List<Object?> get props => [
+    id,
+    date,
+    title,
+    description,
+    speakers,
+    liveLink,
+    duration,
+    track,
+    venue,
+  ];
+
   Talk copyWith({
     String? id,
     DateTime? date,
@@ -33,7 +46,7 @@ class Talk extends Equatable {
     List<Speaker>? speakers,
     String? liveLink,
     String? duration,
-    String? track,
+    int? track,
     String? venue,
   }) {
     return Talk(
@@ -48,17 +61,4 @@ class Talk extends Equatable {
       venue: venue ?? this.venue,
     );
   }
-
-  @override
-  List<Object?> get props => [
-        id,
-        date,
-        title,
-        description,
-        speakers,
-        liveLink,
-        duration,
-        track,
-        venue,
-      ];
 }

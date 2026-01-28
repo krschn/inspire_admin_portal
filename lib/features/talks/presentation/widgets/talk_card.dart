@@ -18,7 +18,7 @@ class TalkCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final dateFormat = DateFormat('MMM d, yyyy');
+    final dateFormat = DateFormat('MMM d, yyyy h:mm a');
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -77,8 +77,8 @@ class TalkCard extends StatelessWidget {
               spacing: 8,
               runSpacing: 8,
               children: [
-                if (talk.track.isNotEmpty)
-                  _buildChip(context, Icons.category, talk.track),
+                if (talk.track != 0)
+                  _buildChip(context, Icons.category, talk.track.toString()),
                 if (talk.venue.isNotEmpty)
                   _buildChip(context, Icons.location_on, talk.venue),
                 if (talk.duration.isNotEmpty)
@@ -96,7 +96,9 @@ class TalkCard extends StatelessWidget {
                         ? CircleAvatar(
                             backgroundImage: NetworkImage(speaker.image),
                           )
-                        : const CircleAvatar(child: Icon(Icons.person, size: 16)),
+                        : const CircleAvatar(
+                            child: Icon(Icons.person, size: 16),
+                          ),
                     label: Text(speaker.name),
                     visualDensity: VisualDensity.compact,
                   );
@@ -107,11 +109,7 @@ class TalkCard extends StatelessWidget {
               const SizedBox(height: 8),
               Row(
                 children: [
-                  Icon(
-                    Icons.link,
-                    size: 16,
-                    color: theme.colorScheme.primary,
-                  ),
+                  Icon(Icons.link, size: 16, color: theme.colorScheme.primary),
                   const SizedBox(width: 4),
                   Expanded(
                     child: Text(

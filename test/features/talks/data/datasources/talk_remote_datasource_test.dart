@@ -28,12 +28,14 @@ void main() {
       'title': title ?? 'Test Talk',
       'date': date ?? testTimestamp,
       'description': description ?? 'Test Description',
-      'speakers': speakers ?? [
-        {'name': 'Speaker 1', 'image': 'https://example.com/1.jpg'},
-      ],
+      'speakers':
+          speakers ??
+          [
+            {'name': 'Speaker 1', 'image': 'https://example.com/1.jpg'},
+          ],
       'live_link': 'https://example.com/live',
       'duration': '30 min',
-      'track': 'Track A',
+      'track': 1,
       'venue': 'Room 101',
     };
   }
@@ -69,13 +71,13 @@ void main() {
         await fakeFirestore
             .collection('events')
             .doc(eventId)
-            .collection('talk')
+            .collection('talks')
             .doc('talk-1')
             .set(createTalkData(title: 'Talk 1'));
         await fakeFirestore
             .collection('events')
             .doc(eventId)
-            .collection('talk')
+            .collection('talks')
             .doc('talk-2')
             .set(createTalkData(title: 'Talk 2'));
 
@@ -100,21 +102,27 @@ void main() {
         await fakeFirestore
             .collection('events')
             .doc(eventId)
-            .collection('talk')
+            .collection('talks')
             .doc('talk-1')
-            .set(createTalkData(title: 'Talk 1', date: Timestamp.fromDate(date1)));
+            .set(
+              createTalkData(title: 'Talk 1', date: Timestamp.fromDate(date1)),
+            );
         await fakeFirestore
             .collection('events')
             .doc(eventId)
-            .collection('talk')
+            .collection('talks')
             .doc('talk-2')
-            .set(createTalkData(title: 'Talk 2', date: Timestamp.fromDate(date2)));
+            .set(
+              createTalkData(title: 'Talk 2', date: Timestamp.fromDate(date2)),
+            );
         await fakeFirestore
             .collection('events')
             .doc(eventId)
-            .collection('talk')
+            .collection('talks')
             .doc('talk-3')
-            .set(createTalkData(title: 'Talk 3', date: Timestamp.fromDate(date3)));
+            .set(
+              createTalkData(title: 'Talk 3', date: Timestamp.fromDate(date3)),
+            );
 
         final talks = await dataSource.getTalks(eventId);
 
@@ -136,7 +144,7 @@ void main() {
           speakers: const [Speaker(name: 'Speaker', image: '')],
           liveLink: 'https://example.com',
           duration: '30 min',
-          track: 'Track A',
+          track: 1,
           venue: 'Room 101',
         );
 
@@ -150,9 +158,63 @@ void main() {
         final snapshot = await fakeFirestore
             .collection('events')
             .doc(eventId)
-            .collection('talk')
+            .collection('talks')
             .get();
         expect(snapshot.docs.length, 1);
+      });
+
+      test('should create talk with custom ID in format YYYYMMDD_HHMM_track_xxx',
+          () async {
+        final talkDate = DateTime(2026, 1, 28, 17, 30);
+        final talkModel = TalkModel(
+          date: talkDate,
+          title: 'Afternoon Talk',
+          description: 'Description',
+          speakers: const [],
+          liveLink: '',
+          duration: '30 min',
+          track: 2,
+          venue: 'Room 101',
+        );
+
+        final result = await dataSource.createTalk(eventId, talkModel);
+
+        expect(result.id, isNotNull);
+        // Verify ID format: YYYYMMDD_HHMM_track_autoId
+        expect(result.id!.startsWith('20260128_1730_2_'), isTrue);
+        expect(result.id!.length, greaterThan('20260128_1730_2_'.length));
+      });
+
+      test('should generate unique IDs for talks at same time and track',
+          () async {
+        final talkDate = DateTime(2026, 1, 28, 9, 0);
+        final talkModel1 = TalkModel(
+          date: talkDate,
+          title: 'Talk 1',
+          description: '',
+          speakers: const [],
+          liveLink: '',
+          duration: '',
+          track: 1,
+          venue: '',
+        );
+        final talkModel2 = TalkModel(
+          date: talkDate,
+          title: 'Talk 2',
+          description: '',
+          speakers: const [],
+          liveLink: '',
+          duration: '',
+          track: 1,
+          venue: '',
+        );
+
+        final result1 = await dataSource.createTalk(eventId, talkModel1);
+        final result2 = await dataSource.createTalk(eventId, talkModel2);
+
+        expect(result1.id, isNot(equals(result2.id)));
+        expect(result1.id!.startsWith('20260128_0900_1_'), isTrue);
+        expect(result2.id!.startsWith('20260128_0900_1_'), isTrue);
       });
     });
 
@@ -165,7 +227,7 @@ void main() {
         await fakeFirestore
             .collection('events')
             .doc(eventId)
-            .collection('talk')
+            .collection('talks')
             .doc(talkId)
             .set(createTalkData(title: 'Original Title'));
 
@@ -177,7 +239,7 @@ void main() {
           speakers: const [],
           liveLink: '',
           duration: '45 min',
-          track: 'Track B',
+          track: 1,
           venue: 'Room 202',
         );
 
@@ -196,7 +258,7 @@ void main() {
           speakers: const [],
           liveLink: '',
           duration: '',
-          track: '',
+          track: 1,
           venue: '',
         );
 
@@ -216,7 +278,7 @@ void main() {
         await fakeFirestore
             .collection('events')
             .doc(eventId)
-            .collection('talk')
+            .collection('talks')
             .doc(talkId)
             .set(createTalkData());
 
@@ -225,7 +287,7 @@ void main() {
         final doc = await fakeFirestore
             .collection('events')
             .doc(eventId)
-            .collection('talk')
+            .collection('talks')
             .doc(talkId)
             .get();
         expect(doc.exists, isFalse);
@@ -235,39 +297,46 @@ void main() {
     group('findTalkByTitleAndDate', () {
       const eventId = 'event-123';
 
-      test('should return TalkModel when talk exists with matching title and date', () async {
-        final targetDate = DateTime(2024, 1, 15, 10, 30);
-        await fakeFirestore
-            .collection('events')
-            .doc(eventId)
-            .collection('talk')
-            .doc('matching-talk')
-            .set(createTalkData(
-              title: 'Target Talk',
-              date: Timestamp.fromDate(targetDate),
-            ));
+      test(
+        'should return TalkModel when talk exists with matching title and date',
+        () async {
+          final targetDate = DateTime(2024, 1, 15, 10, 30);
+          await fakeFirestore
+              .collection('events')
+              .doc(eventId)
+              .collection('talks')
+              .doc('matching-talk')
+              .set(
+                createTalkData(
+                  title: 'Target Talk',
+                  date: Timestamp.fromDate(targetDate),
+                ),
+              );
 
-        final result = await dataSource.findTalkByTitleAndDate(
-          eventId,
-          'Target Talk',
-          targetDate,
-        );
+          final result = await dataSource.findTalkByTitleAndDate(
+            eventId,
+            'Target Talk',
+            targetDate,
+          );
 
-        expect(result, isNotNull);
-        expect(result!.title, 'Target Talk');
-        expect(result.id, 'matching-talk');
-      });
+          expect(result, isNotNull);
+          expect(result!.title, 'Target Talk');
+          expect(result.id, 'matching-talk');
+        },
+      );
 
       test('should return null when no talk matches', () async {
         await fakeFirestore
             .collection('events')
             .doc(eventId)
-            .collection('talk')
+            .collection('talks')
             .doc('other-talk')
-            .set(createTalkData(
-              title: 'Other Talk',
-              date: Timestamp.fromDate(DateTime(2024, 1, 15)),
-            ));
+            .set(
+              createTalkData(
+                title: 'Other Talk',
+                date: Timestamp.fromDate(DateTime(2024, 1, 15)),
+              ),
+            );
 
         final result = await dataSource.findTalkByTitleAndDate(
           eventId,
@@ -282,12 +351,14 @@ void main() {
         await fakeFirestore
             .collection('events')
             .doc(eventId)
-            .collection('talk')
+            .collection('talks')
             .doc('different-date-talk')
-            .set(createTalkData(
-              title: 'Same Title',
-              date: Timestamp.fromDate(DateTime(2024, 1, 15)),
-            ));
+            .set(
+              createTalkData(
+                title: 'Same Title',
+                date: Timestamp.fromDate(DateTime(2024, 1, 15)),
+              ),
+            );
 
         final result = await dataSource.findTalkByTitleAndDate(
           eventId,
@@ -298,29 +369,34 @@ void main() {
         expect(result, isNull);
       });
 
-      test('should match talk within the same day regardless of time', () async {
-        final storedDate = DateTime(2024, 1, 15, 10, 30);
-        final searchDate = DateTime(2024, 1, 15, 14, 0);
+      test(
+        'should match talk within the same day regardless of time',
+        () async {
+          final storedDate = DateTime(2024, 1, 15, 10, 30);
+          final searchDate = DateTime(2024, 1, 15, 14, 0);
 
-        await fakeFirestore
-            .collection('events')
-            .doc(eventId)
-            .collection('talk')
-            .doc('same-day-talk')
-            .set(createTalkData(
-              title: 'Same Day Talk',
-              date: Timestamp.fromDate(storedDate),
-            ));
+          await fakeFirestore
+              .collection('events')
+              .doc(eventId)
+              .collection('talks')
+              .doc('same-day-talk')
+              .set(
+                createTalkData(
+                  title: 'Same Day Talk',
+                  date: Timestamp.fromDate(storedDate),
+                ),
+              );
 
-        final result = await dataSource.findTalkByTitleAndDate(
-          eventId,
-          'Same Day Talk',
-          searchDate,
-        );
+          final result = await dataSource.findTalkByTitleAndDate(
+            eventId,
+            'Same Day Talk',
+            searchDate,
+          );
 
-        expect(result, isNotNull);
-        expect(result!.title, 'Same Day Talk');
-      });
+          expect(result, isNotNull);
+          expect(result!.title, 'Same Day Talk');
+        },
+      );
     });
   });
 }

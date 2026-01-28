@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inspire_admin_portal/features/talks/domain/entities/talk.dart';
 import 'package:inspire_admin_portal/features/talks/domain/entities/speaker.dart';
+import 'package:inspire_admin_portal/features/talks/domain/entities/talk.dart';
 
 void main() {
   group('Talk', () {
@@ -18,7 +18,7 @@ void main() {
       List<Speaker>? speakers,
       String? liveLink,
       String? duration,
-      String? track,
+      int? track,
       String? venue,
     }) {
       return Talk(
@@ -29,7 +29,7 @@ void main() {
         speakers: speakers ?? testSpeakers,
         liveLink: liveLink ?? 'https://example.com/live',
         duration: duration ?? '30 min',
-        track: track ?? 'Track A',
+        track: track ?? 1,
         venue: venue ?? 'Room 101',
       );
     }
@@ -44,7 +44,7 @@ void main() {
       expect(talk.speakers, testSpeakers);
       expect(talk.liveLink, 'https://example.com/live');
       expect(talk.duration, '30 min');
-      expect(talk.track, 'Track A');
+      expect(talk.track, 1);
       expect(talk.venue, 'Room 101');
     });
 
@@ -56,7 +56,7 @@ void main() {
         speakers: testSpeakers,
         liveLink: 'https://example.com/live',
         duration: '30 min',
-        track: 'Track A',
+        track: 1,
         venue: 'Room 101',
       );
 
@@ -93,7 +93,10 @@ void main() {
       test('should return a new Talk with updated speakers', () {
         final talk = createTalk();
         final newSpeakers = [
-          const Speaker(name: 'New Speaker', image: 'https://example.com/new.jpg'),
+          const Speaker(
+            name: 'New Speaker',
+            image: 'https://example.com/new.jpg',
+          ),
         ];
         final updatedTalk = talk.copyWith(speakers: newSpeakers);
 
@@ -116,7 +119,7 @@ void main() {
           speakers: newSpeakers,
           liveLink: 'https://updated.com/live',
           duration: '45 min',
-          track: 'Track B',
+          track: 1,
           venue: 'Room 202',
         );
 
@@ -127,7 +130,7 @@ void main() {
         expect(updatedTalk.speakers, newSpeakers);
         expect(updatedTalk.liveLink, 'https://updated.com/live');
         expect(updatedTalk.duration, '45 min');
-        expect(updatedTalk.track, 'Track B');
+        expect(updatedTalk.track, 1);
         expect(updatedTalk.venue, 'Room 202');
       });
 
