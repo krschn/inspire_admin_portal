@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:excel/excel.dart';
@@ -8,25 +7,26 @@ import '../../domain/entities/speaker.dart';
 import '../../domain/entities/talk.dart';
 import 'excel_parser_base.dart';
 
-/// Standard Excel parser service for the default format.
+/// Excel parser service for DDD 2025 conference format.
 ///
 /// Expected columns:
-/// 0: Date, 1: Title, 2: Description, 3: Speakers (JSON),
-/// 4: Live Link, 5: Duration, 6: Track, 7: Venue
-class StandardExcelParserService extends ExcelParserBase {
-  static const _dateColumn = 0;
-  static const _titleColumn = 1;
-  static const _descriptionColumn = 2;
-  static const _speakersColumn = 3;
-  static const _liveLinkColumn = 4;
-  static const _durationColumn = 5;
+/// 0: ID (skip), 1: Talk Title, 2: Name (skip), 3: Speaker Names (comma-separated),
+/// 4: Talk Description, 5: Status (skip), 6: Track (e.g., "Track 7 - Data"),
+/// 7: Talk Type (duration), 8: Start Time (filter out "None"), 9: Business Area (venue)
+class DddExcelParserService extends ExcelParserBase {
+  static const _talkTitleColumn = 1;
+  static const _speakerNamesColumn = 3;
+  static const _descriptionColumn = 4;
   static const _trackColumn = 6;
-  static const _venueColumn = 7;
+  static const _talkTypeColumn = 7;
+  static const _startTimeColumn = 8;
+  static const _businessAreaColumn = 9;
 
   @override
   ExcelParseResult parseExcel(Uint8List bytes) {
     final List<Talk> talks = [];
     final List<ParseError> errors = [];
+    int skippedRows = 0;
 
     try {
       final excel = Excel.decodeBytes(bytes);
@@ -50,16 +50,23 @@ class StandardExcelParserService extends ExcelParserBase {
         final rowNumber = i + 1; // Human-readable row number
 
         try {
-          final talk = _parseRow(row, rowNumber);
-          if (talk != null) {
-            talks.add(talk);
+          final result = _parseRow(row, rowNumber);
+          if (result == null) {
+            // Row was skipped (empty or no start time)
+            skippedRows++;
+          } else {
+            talks.add(result);
           }
         } on ParseException catch (e) {
           errors.add(ParseError(rowNumber: rowNumber, reason: e.message));
         }
       }
 
-      return ExcelParseResult(talks: talks, errors: errors);
+      return ExcelParseResult(
+        talks: talks,
+        errors: errors,
+        skippedRows: skippedRows,
+      );
     } on ParseException {
       rethrow;
     } catch (e) {
@@ -74,30 +81,45 @@ class StandardExcelParserService extends ExcelParserBase {
     return row[index]!.value?.toString().trim() ?? '';
   }
 
-  DateTime? _parseDate(String dateStr, List<Data?> row, int index) {
-    // Default time for date-only formats (09:00 for backward compatibility)
-    const defaultHour = 9;
-    const defaultMinute = 0;
-
-    // Check for native DateCellValue first (Excel date cells)
+  DateTime? _parseDateTime(String dateStr, List<Data?> row, int index) {
+    // Check for native DateTimeCellValue first (Excel datetime cells)
     if (index < row.length && row[index] != null) {
       final cell = row[index]!;
+      if (cell.value is DateTimeCellValue) {
+        final dtValue = cell.value as DateTimeCellValue;
+        return DateTime(
+          dtValue.year,
+          dtValue.month,
+          dtValue.day,
+          dtValue.hour,
+          dtValue.minute,
+          dtValue.second,
+        );
+      }
       if (cell.value is DateCellValue) {
         final dateCellValue = cell.value as DateCellValue;
         return DateTime(
           dateCellValue.year,
           dateCellValue.month,
           dateCellValue.day,
-          defaultHour,
-          defaultMinute,
+          9, // Default time
+          0,
         );
       }
     }
 
     if (dateStr.isEmpty) return null;
 
-    // Try parsing datetime formats with time first
+    // Check for "None" or similar values that indicate no scheduled time
+    final lowerStr = dateStr.toLowerCase();
+    if (lowerStr == 'none' || lowerStr == 'n/a' || lowerStr == 'tba') {
+      return null;
+    }
+
+    // Try parsing datetime formats
     final datetimeFormats = [
+      // yyyy-MM-dd HH:mm:ss
+      RegExp(r'^(\d{4})-(\d{1,2})-(\d{1,2})\s+(\d{1,2}):(\d{2}):(\d{2})$'),
       // yyyy-MM-dd HH:mm
       RegExp(r'^(\d{4})-(\d{1,2})-(\d{1,2})\s+(\d{1,2}):(\d{2})$'),
       // MM/dd/yyyy HH:mm
@@ -116,9 +138,16 @@ class StandardExcelParserService extends ExcelParserBase {
       final match = format.firstMatch(dateStr);
       if (match != null) {
         try {
-          final hasAmPm = match.groupCount >= 6 && match.group(6) != null;
+          final hasSeconds = match.groupCount >= 6 &&
+              match.group(6) != null &&
+              RegExp(r'^\d+$').hasMatch(match.group(6)!);
+          final hasAmPm = match.groupCount >= 6 &&
+              match.group(6) != null &&
+              RegExp(r'^(AM|PM|am|pm)$').hasMatch(match.group(6)!);
+
           int hour = int.parse(match.group(4)!);
           final minute = int.parse(match.group(5)!);
+          final second = hasSeconds ? int.parse(match.group(6)!) : 0;
 
           if (hasAmPm) {
             final period = match.group(6)!.toUpperCase();
@@ -137,6 +166,7 @@ class StandardExcelParserService extends ExcelParserBase {
               int.parse(match.group(3)!),
               hour,
               minute,
+              second,
             );
           } else {
             // MM/dd/yyyy format
@@ -146,42 +176,7 @@ class StandardExcelParserService extends ExcelParserBase {
               int.parse(match.group(2)!),
               hour,
               minute,
-            );
-          }
-        } catch (_) {
-          continue;
-        }
-      }
-    }
-
-    // Try parsing date-only formats
-    final dateOnlyFormats = [
-      RegExp(r'^(\d{4})-(\d{1,2})-(\d{1,2})$'), // yyyy-MM-dd
-      RegExp(r'^(\d{1,2})/(\d{1,2})/(\d{4})$'), // MM/dd/yyyy
-      RegExp(r'^(\d{1,2})-(\d{1,2})-(\d{4})$'), // MM-dd-yyyy
-    ];
-
-    for (final format in dateOnlyFormats) {
-      final match = format.firstMatch(dateStr);
-      if (match != null) {
-        try {
-          if (format.pattern.startsWith(r'^(\d{4})')) {
-            // yyyy-MM-dd format
-            return DateTime(
-              int.parse(match.group(1)!),
-              int.parse(match.group(2)!),
-              int.parse(match.group(3)!),
-              defaultHour,
-              defaultMinute,
-            );
-          } else {
-            // MM/dd/yyyy or MM-dd-yyyy format
-            return DateTime(
-              int.parse(match.group(3)!),
-              int.parse(match.group(1)!),
-              int.parse(match.group(2)!),
-              defaultHour,
-              defaultMinute,
+              second,
             );
           }
         } catch (_) {
@@ -192,21 +187,37 @@ class StandardExcelParserService extends ExcelParserBase {
 
     // Try DateTime.parse as fallback (handles ISO 8601)
     try {
-      final parsed = DateTime.parse(dateStr);
-      // If no time component was in the original string, use default time
-      if (!dateStr.contains('T') && !dateStr.contains(':')) {
-        return DateTime(
-          parsed.year,
-          parsed.month,
-          parsed.day,
-          defaultHour,
-          defaultMinute,
-        );
-      }
-      return parsed;
+      return DateTime.parse(dateStr);
     } catch (_) {
       return null;
     }
+  }
+
+  /// Extract track number from strings like "Track 7 - Data" -> 7
+  int _parseTrack(String trackStr) {
+    if (trackStr.isEmpty) return 0;
+
+    // Try to extract number from "Track N - Description" format
+    final trackMatch = RegExp(r'Track\s*(\d+)', caseSensitive: false)
+        .firstMatch(trackStr);
+    if (trackMatch != null) {
+      return int.tryParse(trackMatch.group(1)!) ?? 0;
+    }
+
+    // Fallback: try to parse as plain number
+    return int.tryParse(trackStr) ?? 0;
+  }
+
+  /// Parse comma-separated speaker names into Speaker list
+  List<Speaker> _parseSpeakers(String speakerNames) {
+    if (speakerNames.isEmpty) return [];
+
+    return speakerNames
+        .split(',')
+        .map((name) => name.trim())
+        .where((name) => name.isNotEmpty)
+        .map((name) => Speaker(name: name, image: ''))
+        .toList();
   }
 
   Talk? _parseRow(List<Data?> row, int rowNumber) {
@@ -218,51 +229,34 @@ class StandardExcelParserService extends ExcelParserBase {
       return null;
     }
 
-    final title = _getCellValue(row, _titleColumn);
+    // Check Start Time first - skip rows without scheduled time
+    final startTimeValue = _getCellValue(row, _startTimeColumn);
+    final startTime = _parseDateTime(startTimeValue, row, _startTimeColumn);
+    if (startTime == null) {
+      // Silently skip rows without a valid start time
+      return null;
+    }
+
+    final title = _getCellValue(row, _talkTitleColumn);
     if (title.isEmpty) {
       throw const ParseException('Title is required');
     }
 
-    final dateValue = _getCellValue(row, _dateColumn);
-    final date = _parseDate(dateValue, row, _dateColumn);
-    if (date == null) {
-      throw const ParseException('Valid date is required');
-    }
+    final speakerNames = _getCellValue(row, _speakerNamesColumn);
+    final speakers = _parseSpeakers(speakerNames);
 
-    final speakersJson = _getCellValue(row, _speakersColumn);
-    final speakers = _parseSpeakers(speakersJson);
+    final trackStr = _getCellValue(row, _trackColumn);
+    final track = _parseTrack(trackStr);
 
     return Talk(
-      date: date,
+      date: startTime,
       title: title,
       description: _getCellValue(row, _descriptionColumn),
       speakers: speakers,
-      liveLink: _getCellValue(row, _liveLinkColumn),
-      duration: _getCellValue(row, _durationColumn),
-      track: int.tryParse(_getCellValue(row, _trackColumn)) ?? 0,
-      venue: _getCellValue(row, _venueColumn),
+      liveLink: '',
+      duration: _getCellValue(row, _talkTypeColumn),
+      track: track,
+      venue: _getCellValue(row, _businessAreaColumn),
     );
-  }
-
-  List<Speaker> _parseSpeakers(String json) {
-    if (json.isEmpty) return [];
-
-    try {
-      final List<dynamic> decoded = jsonDecode(json);
-      return decoded
-          .map((item) {
-            if (item is Map<String, dynamic>) {
-              return Speaker(
-                name: item['name']?.toString() ?? '',
-                image: item['image']?.toString() ?? '',
-              );
-            }
-            return const Speaker(name: '', image: '');
-          })
-          .where((s) => s.name.isNotEmpty)
-          .toList();
-    } catch (_) {
-      return [];
-    }
   }
 }

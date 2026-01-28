@@ -3,15 +3,38 @@ import 'dart:typed_data';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/utils/snackbar_service.dart';
-import '../../data/services/excel_parser_service.dart';
+import '../../data/services/excel_parser_base.dart';
+import '../../data/services/excel_parser_factory.dart';
 import '../../domain/repositories/talk_repository.dart';
 import '../../domain/usecases/batch_upload_talks.dart';
 import 'events_provider.dart';
 import 'selected_event_provider.dart';
 import 'talks_provider.dart';
 
-final excelParserServiceProvider = Provider<ExcelParserService>((ref) {
-  return ExcelParserService();
+/// Notifier for the currently selected Excel format
+class SelectedExcelFormatNotifier extends Notifier<ExcelFormat> {
+  @override
+  ExcelFormat build() => ExcelFormat.standard;
+
+  void select(ExcelFormat format) {
+    state = format;
+  }
+}
+
+/// Provider for the currently selected Excel format
+final selectedExcelFormatProvider =
+    NotifierProvider<SelectedExcelFormatNotifier, ExcelFormat>(
+        SelectedExcelFormatNotifier.new);
+
+/// Provider for available Excel formats
+final availableExcelFormatsProvider = Provider<List<ExcelFormat>>((ref) {
+  return ExcelParserFactory.availableFormats;
+});
+
+/// Provider for the Excel parser based on selected format
+final excelParserServiceProvider = Provider<ExcelParserBase>((ref) {
+  final format = ref.watch(selectedExcelFormatProvider);
+  return ExcelParserFactory.getParser(format);
 });
 
 final batchUploadTalksUseCaseProvider = Provider<BatchUploadTalks>((ref) {
@@ -43,16 +66,6 @@ class ExcelUploadState {
   }
 }
 
-class ParseError {
-  final int rowNumber;
-  final String reason;
-
-  const ParseError({
-    required this.rowNumber,
-    required this.reason,
-  });
-}
-
 final excelUploadProvider =
     NotifierProvider<ExcelUploadNotifier, ExcelUploadState>(
         ExcelUploadNotifier.new);
@@ -76,9 +89,7 @@ class ExcelUploadNotifier extends Notifier<ExcelUploadState> {
 
       if (parseResult.talks.isEmpty) {
         state = ExcelUploadState(
-          parseErrors: parseResult.errors
-              .map((e) => ParseError(rowNumber: e.rowNumber, reason: e.reason))
-              .toList(),
+          parseErrors: parseResult.errors,
         );
         SnackbarService.showError('No valid talks found in Excel file');
         return false;
@@ -96,10 +107,7 @@ class ExcelUploadNotifier extends Notifier<ExcelUploadState> {
         (uploadResult) {
           state = ExcelUploadState(
             result: uploadResult,
-            parseErrors: parseResult.errors
-                .map(
-                    (e) => ParseError(rowNumber: e.rowNumber, reason: e.reason))
-                .toList(),
+            parseErrors: parseResult.errors,
           );
 
           // Refresh talks list

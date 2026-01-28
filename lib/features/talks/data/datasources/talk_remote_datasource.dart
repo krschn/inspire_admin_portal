@@ -9,16 +9,16 @@ import '../models/event_model.dart';
 import '../models/talk_model.dart';
 
 abstract class TalkRemoteDataSource {
-  Future<List<EventModel>> getEvents();
-  Future<List<TalkModel>> getTalks(String eventId);
   Future<TalkModel> createTalk(String eventId, TalkModel talk);
-  Future<TalkModel> updateTalk(String eventId, TalkModel talk);
   Future<void> deleteTalk(String eventId, String talkId);
   Future<TalkModel?> findTalkByTitleAndDate(
     String eventId,
     String title,
     DateTime date,
   );
+  Future<List<EventModel>> getEvents();
+  Future<List<TalkModel>> getTalks(String eventId);
+  Future<TalkModel> updateTalk(String eventId, TalkModel talk);
 }
 
 class TalkRemoteDataSourceImpl implements TalkRemoteDataSource {
@@ -27,39 +27,13 @@ class TalkRemoteDataSourceImpl implements TalkRemoteDataSource {
   TalkRemoteDataSourceImpl(this.firestore);
 
   @override
-  Future<List<EventModel>> getEvents() async {
-    try {
-      final snapshot =
-          await firestore.collection(FirestorePaths.events).get();
-      return snapshot.docs.map((doc) => EventModel.fromFirestore(doc)).toList();
-    } on FirebaseException catch (e) {
-      throw ServerException(e.message ?? 'Failed to fetch events');
-    } on SocketException {
-      throw const NetworkException();
-    }
-  }
-
-  @override
-  Future<List<TalkModel>> getTalks(String eventId) async {
-    try {
-      final snapshot = await firestore
-          .collection(FirestorePaths.talks(eventId))
-          .orderBy('date', descending: false)
-          .get();
-      return snapshot.docs.map((doc) => TalkModel.fromFirestore(doc)).toList();
-    } on FirebaseException catch (e) {
-      throw ServerException(e.message ?? 'Failed to fetch talks');
-    } on SocketException {
-      throw const NetworkException();
-    }
-  }
-
-  @override
   Future<TalkModel> createTalk(String eventId, TalkModel talk) async {
     try {
       // Generate Firestore auto-ID for uniqueness suffix
-      final autoId =
-          firestore.collection(FirestorePaths.talks(eventId)).doc().id;
+      final autoId = firestore
+          .collection(FirestorePaths.talks(eventId))
+          .doc()
+          .id;
 
       // Create custom ID: YYYYMMDD_HHMM_track_autoId
       final dateStr = DateFormat('yyyyMMdd').format(talk.date);
@@ -67,39 +41,15 @@ class TalkRemoteDataSourceImpl implements TalkRemoteDataSource {
       final customId = '${dateStr}_${timeStr}_${talk.track}_$autoId';
 
       // Use .set() instead of .add() to use our custom ID
-      final docRef =
-          firestore.collection(FirestorePaths.talks(eventId)).doc(customId);
+      final docRef = firestore
+          .collection(FirestorePaths.talks(eventId))
+          .doc(customId);
       await docRef.set(talk.toFirestore());
 
       final doc = await docRef.get();
       return TalkModel.fromFirestore(doc);
     } on FirebaseException catch (e) {
       throw ServerException(e.message ?? 'Failed to create talk');
-    } on SocketException {
-      throw const NetworkException();
-    }
-  }
-
-  @override
-  Future<TalkModel> updateTalk(String eventId, TalkModel talk) async {
-    try {
-      if (talk.id == null) {
-        throw const ServerException('Talk ID is required for update');
-      }
-
-      await firestore
-          .collection(FirestorePaths.talks(eventId))
-          .doc(talk.id)
-          .update(talk.toFirestore());
-
-      final doc = await firestore
-          .collection(FirestorePaths.talks(eventId))
-          .doc(talk.id)
-          .get();
-
-      return TalkModel.fromFirestore(doc);
-    } on FirebaseException catch (e) {
-      throw ServerException(e.message ?? 'Failed to update talk');
     } on SocketException {
       throw const NetworkException();
     }
@@ -144,6 +94,58 @@ class TalkRemoteDataSourceImpl implements TalkRemoteDataSource {
       return TalkModel.fromFirestore(snapshot.docs.first);
     } on FirebaseException catch (e) {
       throw ServerException(e.message ?? 'Failed to find talk');
+    } on SocketException {
+      throw const NetworkException();
+    }
+  }
+
+  @override
+  Future<List<EventModel>> getEvents() async {
+    try {
+      final snapshot = await firestore.collection(FirestorePaths.events).get();
+      return snapshot.docs.map((doc) => EventModel.fromFirestore(doc)).toList();
+    } on FirebaseException catch (e) {
+      throw ServerException(e.message ?? 'Failed to fetch events');
+    } on SocketException {
+      throw const NetworkException();
+    }
+  }
+
+  @override
+  Future<List<TalkModel>> getTalks(String eventId) async {
+    try {
+      final snapshot = await firestore
+          .collection(FirestorePaths.talks(eventId))
+          .orderBy('date', descending: false)
+          .get();
+      return snapshot.docs.map((doc) => TalkModel.fromFirestore(doc)).toList();
+    } on FirebaseException catch (e) {
+      throw ServerException(e.message ?? 'Failed to fetch talks');
+    } on SocketException {
+      throw const NetworkException();
+    }
+  }
+
+  @override
+  Future<TalkModel> updateTalk(String eventId, TalkModel talk) async {
+    try {
+      if (talk.id == null) {
+        throw const ServerException('Talk ID is required for update');
+      }
+
+      await firestore
+          .collection(FirestorePaths.talks(eventId))
+          .doc(talk.id)
+          .update(talk.toFirestore());
+
+      final doc = await firestore
+          .collection(FirestorePaths.talks(eventId))
+          .doc(talk.id)
+          .get();
+
+      return TalkModel.fromFirestore(doc);
+    } on FirebaseException catch (e) {
+      throw ServerException(e.message ?? 'Failed to update talk');
     } on SocketException {
       throw const NetworkException();
     }

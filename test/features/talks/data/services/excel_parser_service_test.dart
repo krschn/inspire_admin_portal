@@ -7,10 +7,10 @@ import 'package:inspire_admin_portal/core/errors/exceptions.dart';
 import 'package:inspire_admin_portal/features/talks/data/services/excel_parser_service.dart';
 
 void main() {
-  late ExcelParserService parserService;
+  late StandardExcelParserService parserService;
 
   setUp(() {
-    parserService = ExcelParserService();
+    parserService = StandardExcelParserService();
   });
 
   Uint8List createExcelBytes({
@@ -90,7 +90,7 @@ void main() {
     return jsonEncode(speakers);
   }
 
-  group('ExcelParserService', () {
+  group('StandardExcelParserService', () {
     group('parseExcel', () {
       test('should parse valid Excel with all fields', () {
         final speakersJson = createSpeakersJson([

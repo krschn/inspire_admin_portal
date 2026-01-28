@@ -2,6 +2,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../data/services/excel_parser_base.dart';
 import '../providers/excel_upload_provider.dart';
 import 'upload_summary_dialog.dart';
 
@@ -28,6 +29,13 @@ class ExcelUploadButton extends ConsumerWidget {
   }
 
   Future<void> _pickAndUpload(BuildContext context, WidgetRef ref) async {
+    // Show format selection dialog first
+    final selectedFormat = await _showFormatSelectionDialog(context, ref);
+    if (selectedFormat == null) return;
+
+    // Set the selected format
+    ref.read(selectedExcelFormatProvider.notifier).select(selectedFormat);
+
     final result = await FilePicker.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['xlsx', 'xls'],
@@ -54,5 +62,37 @@ class ExcelUploadButton extends ConsumerWidget {
       );
       ref.read(excelUploadProvider.notifier).clearState();
     }
+  }
+
+  Future<ExcelFormat?> _showFormatSelectionDialog(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final formats = ref.read(availableExcelFormatsProvider);
+
+    return showDialog<ExcelFormat>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Select Excel Format'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: formats
+              .map(
+                (format) => ListTile(
+                  title: Text(format.displayName),
+                  subtitle: Text(format.description),
+                  onTap: () => Navigator.of(context).pop(format),
+                ),
+              )
+              .toList(),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancel'),
+          ),
+        ],
+      ),
+    );
   }
 }

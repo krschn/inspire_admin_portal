@@ -1,22 +1,19 @@
 import 'package:flutter/material.dart';
 
+import '../../data/services/excel_parser_base.dart';
 import '../../domain/repositories/talk_repository.dart';
-import '../providers/excel_upload_provider.dart';
 
 class UploadSummaryDialog extends StatelessWidget {
   final BatchUploadResult? result;
   final List<ParseError>? parseErrors;
 
-  const UploadSummaryDialog({
-    super.key,
-    this.result,
-    this.parseErrors,
-  });
+  const UploadSummaryDialog({super.key, this.result, this.parseErrors});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final hasErrors = (result?.skippedRows.isNotEmpty ?? false) ||
+    final hasErrors =
+        (result?.skippedRows.isNotEmpty ?? false) ||
         (parseErrors?.isNotEmpty ?? false);
 
     return AlertDialog(
@@ -34,8 +31,9 @@ class UploadSummaryDialog extends StatelessWidget {
       ),
       content: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 400, maxHeight: 400),
-        child: SingleChildScrollView(
-          child: Column(
+        child: SelectionArea(
+          child: SingleChildScrollView(
+            child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -64,11 +62,13 @@ class UploadSummaryDialog extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  ...result!.skippedRows.map((row) => _buildErrorRow(
-                        context,
-                        'Row ${row.rowNumber}',
-                        row.reason,
-                      )),
+                  ...result!.skippedRows.map(
+                    (row) => _buildErrorRow(
+                      context,
+                      'Row ${row.rowNumber}',
+                      row.reason,
+                    ),
+                  ),
                 ],
               ],
               if (parseErrors != null && parseErrors!.isNotEmpty) ...[
@@ -80,44 +80,23 @@ class UploadSummaryDialog extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
-                ...parseErrors!.map((error) => _buildErrorRow(
-                      context,
-                      'Row ${error.rowNumber}',
-                      error.reason,
-                    )),
+                ...parseErrors!.map(
+                  (error) => _buildErrorRow(
+                    context,
+                    'Row ${error.rowNumber}',
+                    error.reason,
+                  ),
+                ),
               ],
             ],
           ),
+        ),
         ),
       ),
       actions: [
         FilledButton(
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('OK'),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStatRow(
-    BuildContext context,
-    IconData icon,
-    String label,
-    String value,
-    Color color,
-  ) {
-    return Row(
-      children: [
-        Icon(icon, color: color, size: 20),
-        const SizedBox(width: 8),
-        Text(label),
-        const Spacer(),
-        Text(
-          value,
-          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
         ),
       ],
     );
@@ -144,14 +123,33 @@ class UploadSummaryDialog extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              reason,
-              style: theme.textTheme.bodySmall,
-            ),
-          ),
+          Expanded(child: Text(reason, style: theme.textTheme.bodySmall)),
         ],
       ),
+    );
+  }
+
+  Widget _buildStatRow(
+    BuildContext context,
+    IconData icon,
+    String label,
+    String value,
+    Color color,
+  ) {
+    return Row(
+      children: [
+        Icon(icon, color: color, size: 20),
+        const SizedBox(width: 8),
+        Text(label),
+        const Spacer(),
+        Text(
+          value,
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+      ],
     );
   }
 }
