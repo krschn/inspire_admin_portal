@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../auth/presentation/widgets/user_menu.dart';
 import '../providers/selected_event_provider.dart';
 import '../providers/talks_provider.dart';
 import '../widgets/event_dropdown.dart';
@@ -20,10 +21,10 @@ class TalksPage extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Talk Management'),
         actions: const [
-          Padding(
-            padding: EdgeInsets.only(right: 16),
-            child: ExcelUploadButton(),
-          ),
+          ExcelUploadButton(),
+          SizedBox(width: 8),
+          UserMenu(),
+          SizedBox(width: 8),
         ],
       ),
       body: Column(

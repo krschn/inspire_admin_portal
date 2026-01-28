@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../auth/presentation/widgets/user_menu.dart';
 import '../../../talks/presentation/providers/selected_event_provider.dart';
 import '../../../talks/presentation/widgets/event_dropdown.dart';
 import '../providers/tracks_provider.dart';
@@ -20,10 +21,10 @@ class TracksPage extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Track Management'),
         actions: const [
-          Padding(
-            padding: EdgeInsets.only(right: 16),
-            child: TrackExcelUploadButton(),
-          ),
+          TrackExcelUploadButton(),
+          SizedBox(width: 8),
+          UserMenu(),
+          SizedBox(width: 8),
         ],
       ),
       body: Column(

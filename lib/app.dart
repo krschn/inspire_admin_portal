@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'core/utils/snackbar_service.dart';
+import 'features/auth/presentation/widgets/auth_wrapper.dart';
 import 'features/talks/presentation/pages/talks_page.dart';
 import 'features/tracks/presentation/pages/tracks_page.dart';
 
@@ -17,7 +18,7 @@ class App extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
         useMaterial3: true,
       ),
-      home: const HomePage(),
+      home: const AuthWrapper(child: HomePage()),
     );
   }
 }

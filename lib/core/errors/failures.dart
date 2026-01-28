@@ -28,3 +28,7 @@ class ValidationFailure extends Failure {
 class ParseFailure extends Failure {
   const ParseFailure(super.message);
 }
+
+class AuthFailure extends Failure {
+  const AuthFailure(super.message);
+}
