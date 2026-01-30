@@ -15,7 +15,7 @@ class App extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       scaffoldMessengerKey: SnackbarService.scaffoldMessengerKey,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.indigo),
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF9C27B0)),
         useMaterial3: true,
       ),
       home: const AuthWrapper(child: HomePage()),

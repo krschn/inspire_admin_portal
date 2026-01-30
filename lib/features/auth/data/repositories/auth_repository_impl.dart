@@ -17,6 +17,18 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<Either<Failure, AppUser>> signInWithEmailPassword(
+      String email, String password) async {
+    try {
+      final userModel =
+          await remoteDataSource.signInWithEmailPassword(email, password);
+      return Right(userModel.toEntity());
+    } on AuthException catch (e) {
+      return Left(AuthFailure(e.message));
+    }
+  }
+
+  @override
   Future<Either<Failure, AppUser>> signInWithMicrosoft() async {
     try {
       final userModel = await remoteDataSource.signInWithMicrosoft();

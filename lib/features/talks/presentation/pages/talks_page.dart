@@ -19,7 +19,7 @@ class TalksPage extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Talk Management'),
+        title: const Text('Inspire Admin'),
         actions: const [
           ExcelUploadButton(),
           SizedBox(width: 8),
