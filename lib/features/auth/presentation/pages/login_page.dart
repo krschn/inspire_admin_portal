@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../domain/entities/rate_limit_state.dart';
 import '../providers/auth_provider.dart';
+import '../providers/rate_limit_provider.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -16,11 +20,40 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
 
+  Timer? _countdownTimer;
+  Duration _remainingLockout = Duration.zero;
+
   @override
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _countdownTimer?.cancel();
     super.dispose();
+  }
+
+  void _startCountdownTimer(Duration remaining) {
+    _countdownTimer?.cancel();
+    _remainingLockout = remaining;
+
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      setState(() {
+        _remainingLockout = _remainingLockout - const Duration(seconds: 1);
+        if (_remainingLockout.isNegative || _remainingLockout == Duration.zero) {
+          timer.cancel();
+          _remainingLockout = Duration.zero;
+        }
+      });
+    });
+  }
+
+  String _formatDuration(Duration duration) {
+    final minutes = duration.inMinutes;
+    final seconds = duration.inSeconds % 60;
+    return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
   }
 
   Future<void> _signInWithEmailPassword() async {
@@ -36,8 +69,22 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   Widget build(BuildContext context) {
     final authActions = ref.watch(authActionsProvider);
     final isLoading = authActions.isLoading;
+    final rateLimitAsync = ref.watch(rateLimitProvider);
+
+    final rateLimitState = rateLimitAsync.value ?? RateLimitState.initial();
+    final isLockedOut = rateLimitState.isLockedOut;
+
+    // Start countdown timer when locked out
+    if (isLockedOut && _remainingLockout == Duration.zero) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _startCountdownTimer(rateLimitState.remainingLockoutDuration);
+      });
+    }
+
+    final isEmailPasswordDisabled = isLoading || isLockedOut;
 
     return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.surface,
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 400),
@@ -50,10 +97,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(
-                      Icons.admin_panel_settings,
-                      size: 64,
-                      color: Theme.of(context).colorScheme.primary,
+                    Image.asset(
+                      'assets/images/inspire_logo.png',
+                      width: 80,
+                      height: 80,
                     ),
                     const SizedBox(height: 24),
                     Text(
@@ -67,7 +114,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                             color: Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
                     ),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 24),
+                    if (isLockedOut) ...[
+                      _buildLockoutBanner(context),
+                      const SizedBox(height: 16),
+                    ],
                     TextFormField(
                       controller: _emailController,
                       decoration: const InputDecoration(
@@ -77,7 +128,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       ),
                       keyboardType: TextInputType.emailAddress,
                       textInputAction: TextInputAction.next,
-                      enabled: !isLoading,
+                      enabled: !isEmailPasswordDisabled,
                       validator: (value) {
                         if (value == null || value.trim().isEmpty) {
                           return 'Please enter your email';
@@ -110,7 +161,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                       ),
                       obscureText: _obscurePassword,
                       textInputAction: TextInputAction.done,
-                      enabled: !isLoading,
+                      enabled: !isEmailPasswordDisabled,
                       onFieldSubmitted: (_) => _signInWithEmailPassword(),
                       validator: (value) {
                         if (value == null || value.isEmpty) {
@@ -123,7 +174,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     SizedBox(
                       width: double.infinity,
                       child: FilledButton(
-                        onPressed: isLoading ? null : _signInWithEmailPassword,
+                        onPressed:
+                            isEmailPasswordDisabled ? null : _signInWithEmailPassword,
                         child: isLoading
                             ? const SizedBox(
                                 width: 20,
@@ -154,6 +206,48 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildLockoutBanner(BuildContext context) {
+    return Container(
+      key: const ValueKey('lockout_banner'),
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.errorContainer,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.lock_clock,
+            color: Theme.of(context).colorScheme.onErrorContainer,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Too many failed attempts',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onErrorContainer,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Try again in ${_formatDuration(_remainingLockout)}',
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onErrorContainer,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -10,6 +10,7 @@ import '../../domain/usecases/get_auth_state_changes.dart';
 import '../../domain/usecases/sign_in_with_email_password.dart';
 import '../../domain/usecases/sign_in_with_microsoft.dart';
 import '../../domain/usecases/sign_out.dart';
+import 'rate_limit_provider.dart';
 
 final authRemoteDataSourceProvider = Provider<AuthRemoteDataSource>((ref) {
   final firebaseAuth = ref.watch(firebaseAuthProvider);
@@ -56,6 +57,13 @@ class AuthActionsNotifier extends AsyncNotifier<void> {
   Future<void> build() async {}
 
   Future<bool> signInWithEmailPassword(String email, String password) async {
+    // Check rate limit before attempting sign in
+    final rateLimitState = ref.read(rateLimitProvider).value;
+    if (rateLimitState?.isLockedOut ?? false) {
+      SnackbarService.showError('Too many failed attempts. Please wait.');
+      return false;
+    }
+
     state = const AsyncLoading();
     final signIn = ref.read(signInWithEmailPasswordUseCaseProvider);
     final result = await signIn(email, password);
@@ -64,10 +72,14 @@ class AuthActionsNotifier extends AsyncNotifier<void> {
       (failure) {
         state = AsyncError(failure.message, StackTrace.current);
         SnackbarService.showError(failure.message);
+        // Record failed attempt for rate limiting
+        ref.read(rateLimitProvider.notifier).recordFailedAttempt();
         return false;
       },
       (user) {
         state = const AsyncData(null);
+        // Reset rate limit on successful sign in
+        ref.read(rateLimitProvider.notifier).resetOnSuccess();
         return true;
       },
     );

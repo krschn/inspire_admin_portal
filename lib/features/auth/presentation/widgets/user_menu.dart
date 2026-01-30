@@ -47,6 +47,8 @@ class UserMenu extends ConsumerWidget {
                     Text(
                       user.displayName!,
                       style: Theme.of(context).textTheme.titleSmall,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   if (user.email != null)
                     Text(
@@ -54,6 +56,8 @@ class UserMenu extends ConsumerWidget {
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                 ],
               ),
